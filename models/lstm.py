@@ -7,7 +7,7 @@ class LSTMModel(nn.Module):
     The RNN model that will be used to perform Sentiment analysis.
     """
 
-    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob):
+    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob, device):
         """
         Initialize the model by setting up the layers.
         Arguments:
@@ -23,62 +23,47 @@ class LSTMModel(nn.Module):
         self.output_size = output_size
         self.n_layers = n_layers
         self.hidden_dim = hidden_dim
-        
-        # an embedding layer that maps each word index to its dense vector representation. 
+        self.device = device
+
+        # an embedding layer that maps each word index to its dense vector representation.
         # this layer is used to learn word embeddings during training.
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        
-        # an LSTM layer that processes the input sequence of word embeddings 
-        # and produces a sequence of hidden states. 
-        self.lstm = nn.LSTM(embedding_dim, 
-                            hidden_dim, 
-                            n_layers, 
-                            dropout=0.5, 
-                            batch_first=True)
-        
-        # a dropout layer that randomly sets elements of the input to zero 
-        # with probability drop_prob. 
+
+        # an LSTM layer that processes the input sequence of word embeddings
+        # and produces a sequence of hidden states.
+        self.lstm = nn.LSTM(embedding_dim,
+                            hidden_dim,
+                            n_layers,
+                            dropout=0.5,
+                            batch_first=True, bidirectional=True)
+
+        # a dropout layer that randomly sets elements of the input to zero
+        # with probability drop_prob.
         # this layer helps in preventing overfitting.
         self.dropout = nn.Dropout(p=drop_prob)
-        
+
         # linear and sigmoid layers
         self.fc = nn.Linear(hidden_dim, output_size)
-        self.sig = nn.Sigmoid()
-        
 
-    def forward(self, x, hidden):
+    def forward(self, x):
         """
         Perform a forward pass of our model on some input and hidden state.
         """
         # compute the word embeddings for the input sequence.
         batch_size = x.size(0)
+        hidden = self._init_hidden(batch_size)
         embeds = self.embedding(x)
-        
+
         # pass the embeddings through the LSTM layer to get the LSTM outputs and the updated hidden state.
-        lstm_out, hidden = self.lstm(embeds,hidden)
-        lstm_out = lstm_out.contiguous().view(-1,self.hidden_dim)
-        
-        # apply dropout to the reshaped LSTM outputs.
-        out = self.dropout(lstm_out)
-        
-        # pass the output through the fully connected layer.
-        out = self.fc(out)
-        
-        # apply the sigmoid activation function to squash the output between 0 and 1.
-        out = self.sig(out)
-        out = out.view(batch_size,-1)
-        
-        # extract the last five elements from each sequence in the batch
-        out = out[:,-5:]
-        return out, hidden
-    
-    
-    def init_hidden(self, batch_size, device):
+        lstm_out, hidden = self.lstm(embeds, hidden)
+        hidden_cat = torch.cat([hidden[-1], hidden[-2]], dim=1)
+        fc_output = self.fc(hidden_cat)
+        return fc_output
+
+    def _init_hidden(self, batch_size):
         """ 
         Initializes hidden state 
         """
-        weight = next(self.parameters()).data
-        hidden = (weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(device),
-                  weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(device))
-        
+        hidden = torch.zeros(self.n_layers*2,
+                             batch_size, self.hidden_dim, device=self.device)
         return hidden
