@@ -15,7 +15,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 
 
-MAX_VOCAB_SIZE = 50000  # 词表长度限制
+MAX_VOCAB_SIZE = 120000  # 词表长度限制
 unk = '<UNK>'
 pad = '<PAD>'
 MAX_DATA_FOR_DEBUG=1000
@@ -36,7 +36,7 @@ def build_vocab_and_data(file_path):
     k=0
     for phrase in tqdm(df['Phrase']):
         k += 1
-        if k>MAX_VOCAB_SIZE:
+        if k>MAX_DATA_FOR_DEBUG:
             break
         if (not isinstance(phrase, str)):
             phrase = ""
@@ -74,7 +74,8 @@ def build_vocab_and_data(file_path):
     sentiments = []
     k = 0 
     for sentiment in tqdm(df['Sentiment']):
-        if k>MAX_VOCAB_SIZE:
+        k += 1
+        if k>MAX_DATA_FOR_DEBUG:
             break
         if (not isinstance(sentiment, int)):
             print(f'Error, target is not int: {sentiment}')
