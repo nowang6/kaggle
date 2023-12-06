@@ -13,7 +13,7 @@ from util.data import init_network
 
 
 EPOCHS = 2
-
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 def train(model, train_loader, valid_loader):
   model.train()
@@ -24,6 +24,9 @@ def train(model, train_loader, valid_loader):
       running_loss = 0
       model.train()
       for input, targets in tqdm(train_loader):
+          input = input.to(DEVICE)
+          targets = targets.to(DEVICE)
+          
           out = model(input)
           loss = criterion(out, targets)
           running_loss += loss.item()
@@ -52,17 +55,14 @@ if __name__ == '__main__':
   EMBEEDING_DIM = 100
   HIDDEN_DIM = 256
 
-
-  DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
   train_data = "data/THUCNews/train.txt"
 
   vocab, train_data, train_target = build_vocab_and_data(train_data)
   VOC_SIZE = len(vocab)
   X_train, X_val, y_train, y_val = train_test_split(train_data, train_target, test_size=0.3)
   
-  train_data = TensorDataset(torch.from_numpy(X_train, DEVICE), torch.from_numpy(y_train, DEVICE))
-  valid_data = TensorDataset(torch.from_numpy(X_val, DEVICE), torch.from_numpy(y_val, DEVICE))
+  train_data = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
+  valid_data = TensorDataset(torch.from_numpy(X_val), torch.from_numpy(y_val))
   
   train_loader = DataLoader(train_data, shuffle=True, batch_size=BATCH_SIZE)
   valid_loader = DataLoader(valid_data, shuffle=True, batch_size=BATCH_SIZE)
